@@ -271,6 +271,7 @@ tasks
     .byt 0                  ; wrap
     .byt 0                  ; head
     .byt 0                  ; tail
+past
     .dsb 20,0
 
 ;--------------------------------------------------------------
@@ -367,6 +368,21 @@ cmainirq
 
 ;--------------------------------------------------------------
 #if 0
+name=EVENTS
+stack=( -- )
+tags=events
+#endif
+events
+    jsr doringbuffer
+    .byt 15                 ; size
+    .byt 0                  ; wrap
+    .byt 0                  ; head
+    .byt 0                  ; tail
+future
+    .dsb 15,0
+
+;--------------------------------------------------------------
+#if 0
 name=EVENTIRQ
 stack=( -- )
 tags=events
@@ -376,87 +392,107 @@ programmer: [[EVENTS]] and [[TASKS]].  The third queue is
 internal to this IRQ service routine and is not thread-safe 
 for read or write by mainline code.
 
-* check for events
-* decrement all timers
-* remove expired events
-* add expired event CFAs to the [[TASKS]] queue
-* add [[EVENTS]] from the [[NEW-EVENTS]] queue
+* for each present event
+* * decrement present event countdown timer
+* * when timer reaches zero
+* * * add expired event CFAs to the [[TASKS]] queue
+* * * remove expired event
+* until future queue is empty 
+* or this future event is incomplete
+* * add this future event to the present events queue
+* * advance the tail of the future events queue
 * chain the ROM IRQ service routine
 #endif
 eventirq
     jsr slide               ; we may need two bytes of zero page
-    ldx evcounters+2        ; tail
-    dex
-    jmp eventirq02
-eventirq01
-    dec eventtimers,x
-    bne eventirq02
-    ; expired? add it to [[TASKS]]
-    lda #<(tasks+7)
+    txa
+    pha
+
+    ldx present
+    beq nextcube
+doboil
+    dec present,x
+    bne nextboil
+    lda #<past              ; this event has expired
     sta tos
-    lda #>(tasks+7)
+    lda #>past
     sta tos+1
-    clc                     ; the head
+    clc                     ; queue writes go to the head
     lda #0
-    jsr pringbufplus        ; get the head
+    jsr pringbufplus        ; tos points to the next task
     ldy #0
-    lda eventcfalo,x
+    lda presentcfalo,x
     sta (tos),y
     iny
-    lda eventcfahi,x
+    lda presentcfahi,x
     sta (tos),y
-    clc                     ; the head
-    lda #2
-    jsr pringbufplus        ; increment the head
-    ; remove the event here
-eventirq02
-    inx
-    txa
-    and #7                  ; for 8 events
-    ; and #15               ; for 16 events
-    tax
-    bne eventirq03
-    inc evcounters          ; bump wrap
-eventirq03
-    cpx evcounters+1        ; compare to head
-    bne eventirq01          ; we've got something
-    lda evcounters          ; wrap
-    lsr
-    bcs eventirq01          ; parity bit odd? queue is full
-eventirq04
-    ; add new events here
-    jsr slip                ; restore the data stack
-    jmp MAINIRQ
-
-    lda #<(newevents+7)
-    sta tos
-    lda #>(newevents+7)
-    sta tos+1
-    sec                 ; the tail
-    lda #0
-    jsr pringbufplus
-    ldy #0
-    lda (tos),y
-    beq eventirq01
-    inc VIDRAM
     clc
-    sbc #0
-    sta (tos),y
+    lda #2
+    jsr pringbufplus        ; advance past events head
+    ldy present
+    dec present
+    lda present,y
+    sta present,x
+    lda presentcfalo,y
+    sta presentcfalo,x
+    lda presentcfahi,y
+    sta presentcfahi,x      ; remove expired event
+nextboil
+    dex
+    bne doboil
+nextcube
+    lda #<future
+    sta tos
+    lda #>(future-256)
+    sta tos+1
+    ldy #$ff                ; compare tail to head
+    lda (tos),y             ; tail
+    dey
+    cmp (tos),y             ; head
+    bne testcube
+    dey
+    lda (tos),y             ; wrap byte
+    lsr
+    bcc nomoreice           ; even parity?  we're done
+    ldy #$ff                ; reget the tail
+    lda (tos),y
+    inc tos+1
+testcube
+    sec
+    lda #0
+    jsr pringbufplus        ; tos points to the new event
+    ldy #0                  ; ~ do most calls to pringbufplus need Y=0 after?
+    lda (tos),y
+    beq nomoreice           ; timer=0? this event is incomplete. we're done
+    ldy #2
+    lda (tos),y
+    beq nomoreice           ; cfahi=0?  this event is incomplete. we're done
+meltcube
+    inc present             ; add a new event
+    ldx present
+    lda (tos),y
+    sta presentcfahi,x
+    dey
+    lda (tos),y
+    sta presentcfalo,x
+    dey
+    lda (tos),y
+    sta present,x
+    sec
+    lda #3
+    jsr pringbufplus        ; tos points to the new event
+    jmp nextcube
+nomoreice
+    pla
+    tax
+    jsr slip                ; discard zero page pointer
+    jmp MAINIRQ
+	
+present
+    .byt 0                  ; size
+    .dsb 10,0
+presentcfalo = *-1
+    .dsb 10,0
+presentcfahi = *-1
+    .dsb 10,0
 
-;--------------------------------------------------------------
-#if 0
-name=EVENTS
-stack=( -- )
-tags=events
-#endif
-evcounters
-;    .byt 8                 ; size is implicit, either 8 or 16
-    .byt 0                  ; wrap
-    .byt 0                  ; head
-    .byt 0                  ; tail
-eventtimers
-    .dsb 8,0
-eventcfalo
-    .dsb 8,0
-eventcfahi
-    .dsb 8,0
