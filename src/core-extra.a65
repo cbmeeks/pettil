@@ -404,9 +404,11 @@ for read or write by mainline code.
 * chain the ROM IRQ service routine
 #endif
 eventirq
-    jsr slide               ; we may need two bytes of zero page
-    txa
+    lda tos+1
     pha
+    lda tos
+    pha
+    jmp nomoreice
 
     ldx present
     beq nextcube
@@ -484,8 +486,9 @@ meltcube
     jmp nextcube
 nomoreice
     pla
-    tax
-    jsr slip                ; discard zero page pointer
+    sta tos
+    pla
+    sta tos+1
     jmp MAINIRQ
 	
 present
