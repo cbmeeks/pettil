@@ -227,9 +227,9 @@ doringbuffer
 
 ;--------------------------------------------------------------
 #if 0
-name=NEW-EVENTS
-stack=( -- addr )
-tags=compiler
+name=EVENTS
+stack=( -- )
+tags=events
 This is a [[RINGBUFFER]] of five 3-byte elements, used by the 
 event IRQ routine.  New events are added like this:
 
@@ -245,13 +245,46 @@ said to be latched, and the IRQ will add it to the [[EVENTS]] list
 (and remove it from [[NEW-EVENTS]])
 
 #endif
-newevents
+events
     jsr doringbuffer
     .byt 15                 ; size
     .byt 0                  ; wrap
     .byt 0                  ; head
     .byt 0                  ; tail
+future
     .dsb 15,0
+
+;--------------------------------------------------------------
+#if 0
+name=PRESENT
+stack=( -- )
+tags=events
+IRQ service routine used by event handler.  There are three 
+FIFO queues, two of them accessible to the application 
+programmer: [[EVENTS]] and [[TASKS]].  The third queue is 
+internal to this IRQ service routine and is not thread-safe 
+for read or write by mainline code.
+
+* for each present event
+* * decrement present event countdown timer
+* * when timer reaches zero
+* * * add expired event CFAs to the [[TASKS]] queue
+* * * remove expired event
+* until future queue is empty 
+* or this future event is incomplete
+* * add this future event to the present events queue
+* * advance the tail of the future events queue
+* chain the ROM IRQ service routine
+#endif
+presentcfa
+    jsr docreate
+present
+    .byt 0                  ; size
+    .dsb 10,0
+presentcfalo = *-1
+    .dsb 10,0
+presentcfahi = *-1
+    .dsb 10,0
 
 ;--------------------------------------------------------------
 #if 0
@@ -368,21 +401,6 @@ cmainirq
 
 ;--------------------------------------------------------------
 #if 0
-name=EVENTS
-stack=( -- )
-tags=events
-#endif
-events
-    jsr doringbuffer
-    .byt 15                 ; size
-    .byt 0                  ; wrap
-    .byt 0                  ; head
-    .byt 0                  ; tail
-future
-    .dsb 15,0
-
-;--------------------------------------------------------------
-#if 0
 name=EVENTIRQ
 stack=( -- )
 tags=events
@@ -408,7 +426,6 @@ eventirq
     pha
     lda tos
     pha
-    jmp nomoreice
 
     ldx present
     beq nextcube
@@ -443,6 +460,7 @@ nextboil
     dex
     bne doboil
 nextcube
+                    jmp nomoreice
     lda #<future
     sta tos
     lda #>(future-256)
@@ -491,11 +509,30 @@ nomoreice
     sta tos+1
     jmp MAINIRQ
 	
-present
-    .byt 0                  ; size
-    .dsb 10,0
-presentcfalo = *-1
-    .dsb 10,0
-presentcfahi = *-1
-    .dsb 10,0
+;--------------------------------------------------------------
+#if 0
+name=GO
+stack=( -- )
+tags=events
+IRQ service routine used by event handler.  There are three 
+FIFO queues, two of them accessible to the application 
+programmer: [[EVENTS]] and [[TASKS]].  The third queue is 
+internal to this IRQ service routine and is not thread-safe 
+for read or write by mainline code.
 
+* for each present event
+* * decrement present event countdown timer
+* * when timer reaches zero
+* * * add expired event CFAs to the [[TASKS]] queue
+* * * remove expired event
+* until future queue is empty 
+* or this future event is incomplete
+* * add this future event to the present events queue
+* * advance the tail of the future events queue
+* chain the ROM IRQ service routine
+#endif
+go
+    lda #<(MAINIRQ^eventirq)
+    ldy #>(MAINIRQ^eventirq)
+    jsr push6502
+    jmp irqcaret
