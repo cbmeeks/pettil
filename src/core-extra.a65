@@ -433,10 +433,7 @@ eventirq
 doboil
     dec present,x
     bne nextboil
-    lda #<past              ; this event has expired
-    sta tos
-    lda #>past
-    sta tos+1
+    jsr tasksaddr
     clc                     ; queue writes go to the head
     lda #0
     jsr pringbufplus        ; tos points to the next task
@@ -461,10 +458,8 @@ nextboil
     dex
     bne doboil
 nextcube
-    lda #<future
-    sta tos
-    lda #>(future-$0100)
-    sta tos+1
+    jsr eventsaddr
+    dec tos+1               ; back up to prev page
     ldy #$fd
     lda (tos),y             ; wrap byte
     lsr
@@ -497,6 +492,7 @@ meltcube
     lda (tos),y
     sta present,x
 yeahhere
+    jsr eventsaddr
     sec
     lda #3
     jsr pringbufplus        ; move the tail to consume event
@@ -507,7 +503,19 @@ nomoreice
     pla
     sta tos+1
     jmp MAINIRQ
-	
+
+eventsaddr
+    lda #<future
+    ldy #>future
+    bne setaddr             ; bra
+tasksaddr
+    lda #<past              ; this event has expired
+    ldy #>past
+setaddr
+    sta tos
+    sty tos+1
+	rts
+
 ;--------------------------------------------------------------
 #if 0
 name=GO
