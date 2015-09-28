@@ -429,6 +429,7 @@ eventirq
 
     ldx present
     beq nextcube
+                    bne nextcube
 doboil
     dec present,x
     bne nextboil
@@ -460,24 +461,21 @@ nextboil
     dex
     bne doboil
 nextcube
-                    jmp nomoreice
     lda #<future
     sta tos
-    lda #>(future-256)
+    lda #>(future-$0100)
     sta tos+1
-    ldy #$ff                ; compare tail to head
-    lda (tos),y             ; tail
-    dey
-    cmp (tos),y             ; head
-    bne testcube
-    dey
+    ldy #$fd
     lda (tos),y             ; wrap byte
     lsr
-    bcc nomoreice           ; even parity?  we're done
-    ldy #$ff                ; reget the tail
-    lda (tos),y
-    inc tos+1
+    bcs testcube            ; odd parity? always test
+    iny                     ; point to head
+    lda (tos),y             ; head
+    iny
+    cmp (tos),y             ; tail
+    beq nomoreice           ; even parity and head=tail? empty
 testcube
+    inc tos+1
     sec
     lda #0
     jsr pringbufplus        ; tos points to the new event
@@ -498,9 +496,10 @@ meltcube
     dey
     lda (tos),y
     sta present,x
+yeahhere
     sec
     lda #3
-    jsr pringbufplus        ; tos points to the new event
+    jsr pringbufplus        ; move the tail to consume event
     jmp nextcube
 nomoreice
     pla
@@ -536,3 +535,4 @@ go
     ldy #>(MAINIRQ^eventirq)
     jsr push6502
     jmp irqcaret
+
