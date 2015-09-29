@@ -344,26 +344,25 @@ tags=compiler,subroutine,nosymbol
 input
 A
 N = 0 for head, 1 for tail
-V = 0 for past, 1 for future
+V = 0 for past/TASKS, 1 for future/EVENTS
 bits 0..5 = offset to add
 
 return
 TOS = address
 
 #endif
-eventring
+ringo
     pha
     asl                     ; copy N flag to C flag
-    bmi eventring01
+    bpl ringo01
     jsr eventsaddr
-    bne eventring02         ; bra
-eventring01
+    bne ringo02             ; bra
+ringo01
     jsr tasksaddr
-eventring02
+ringo02
     pla
     and #$3f
-    jmp pringbufplus
-
+    ; fall through
 ;--------------------------------------------------------------
 #if 0
 name=(RINGBUF+)
@@ -491,18 +490,16 @@ doboil
     dec present,x
     bne nextboil
     jsr tasksaddr
-    clc                     ; queue writes go to the head
-    lda #0
-    jsr pringbufplus        ; tos points to the next task
+    lda #0                  ; read|head|tasks
+    jsr ringo               ; tos points to the next task
     ldy #0
     lda presentcfalo,x
     sta (tos),y
     iny
     lda presentcfahi,x
     sta (tos),y
-    clc
-    lda #2
-    jsr pringbufplus        ; advance past events head
+    lda #2                  ; move|head|tasks
+    jsr ringo
     ldy present
     dec present
     lda present,y
@@ -528,9 +525,8 @@ nextcube
     beq nomoreice           ; even parity and head=tail? empty
 testcube
     inc tos+1
-    sec
-    lda #0
-    jsr pringbufplus        ; tos points to the new event
+    lda #0|bit7|bit6        ; read | tail | events
+    jsr ringo               ; tos points to the new event
     ldy #0                  ; ~ do most calls to pringbufplus need Y=0 after?
     lda (tos),y
     beq nomoreice           ; timer=0? this event is incomplete. we're done
@@ -550,9 +546,8 @@ meltcube
     sta present,x
 yeahhere
     jsr eventsaddr
-    sec
-    lda #3
-    jsr pringbufplus        ; move the tail to consume event
+    lda #3|bit7|bit6        ; move | tail | events
+    jsr ringo               ; move the tail to consume event
     jmp nextcube
 nomoreice
     pla
