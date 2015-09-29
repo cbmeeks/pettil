@@ -309,6 +309,63 @@ past
 
 ;--------------------------------------------------------------
 #if 0
+name=EVENTSADDR
+stack=( -- addr )
+tags=subroutine,nosymbol
+return
+TOS = address of the EVENT ring
+#endif
+eventsaddr
+    lda #<future
+    ldy #>future
+    bne settos              ; bra
+;--------------------------------------------------------------
+#if 0
+name=TASKSADDR
+stack=( -- addr )
+tags=subroutine,nosymbol
+return
+TOS = address of the TASK ring
+#endif
+tasksaddr
+    lda #<past              ; this event has expired
+    ldy #>past
+    ;
+settos
+    sta tos
+    sty tos+1
+    rts
+
+;--------------------------------------------------------------
+#if 0
+name=EVENTRING
+stack=( ringbuffer -- addr )
+tags=compiler,subroutine,nosymbol
+input
+A
+N = 0 for head, 1 for tail
+V = 0 for past, 1 for future
+bits 0..5 = offset to add
+
+return
+TOS = address
+
+#endif
+eventring
+    pha
+    asl                     ; copy N flag to C flag
+    bmi eventring01
+    jsr eventsaddr
+    bne eventring02         ; bra
+eventring01
+    jsr tasksaddr
+eventring02
+    pla
+    and #$3f
+    jmp pringbufplus
+
+;--------------------------------------------------------------
+#if 0
 name=(RINGBUF+)
 stack=( ringbuffer -- addr )
 tags=compiler,subroutine,nosymbol
@@ -503,18 +560,6 @@ nomoreice
     pla
     sta tos+1
     jmp MAINIRQ
-
-eventsaddr
-    lda #<future
-    ldy #>future
-    bne setaddr             ; bra
-tasksaddr
-    lda #<past              ; this event has expired
-    ldy #>past
-setaddr
-    sta tos
-    sty tos+1
-	rts
 
 ;--------------------------------------------------------------
 #if 0
