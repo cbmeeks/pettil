@@ -557,18 +557,7 @@ nextcube
     jsr eventsaddr
     jsr rbuffull
     beq nomoreice
-;    dec tos+1               ; back up to prev page
-;    ldy #$fd
-;    lda (tos),y             ; wrap byte
-;    lsr
-;    bcs testcube            ; odd parity? always test
-;    iny                     ; point to head
-;    lda (tos),y             ; head
-;    iny
-;    cmp (tos),y             ; tail
-;    beq nomoreice           ; even parity and head=tail? empty
 testcube
-;    inc tos+1
     lda #0|bit7|bit6        ; read | tail | events
     jsr ringo               ; tos points to the new event
     ldy #0                  ; ~ do most calls to pringbufplus need Y=0 after?
