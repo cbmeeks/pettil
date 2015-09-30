@@ -459,11 +459,15 @@ cmainirq
 #if 0
 name=RBUFDATA?
 stack=( addr -- flag )
-tags=events,nosymbol
+tags=events
 Returns [[TRUE]] if the ring buffer has data, [[FALSE]] if empty
 #endif
 rbufdataq
     jsr rbuffull
+    tya
+    bne rbufdataq01
+    adc #0              ; full(1) or empty(0) depends on C flag
+rbufdataq01
     jmp put
 
 ;--------------------------------------------------------------
@@ -471,14 +475,13 @@ rbufdataq
 name=RBUFFULL
 stack=( addr -- flag )
 tags=events,nosymbol,subroutine
-|^''A''|''0'' head = tail<br|
-|~|''!0'' data in buffer|
-|''Y''|''00''|
-|~|''FF''|
-|''C''|''true''|
-|~|''false''|
-|''Z''|''true''|
-|~|''false''|
+|^''A''|''00''<br/>head = tail|
+|~|''!00''<br/>data in buffer|
+|^''Y''|''00''<br/>head = tail|
+|~|''ff''<br/>buffer contains data|
+|^''C''|''true''<br/>buffer is full iff head=tail|
+|~|''false''<br/>buffer is empty iff head=tail|
+|''TOS''|unchanged|
 #endif
 rbuffull
     dec tos+1
@@ -490,7 +493,6 @@ rbuffull
     iny                 ; tail
     eor (tos),y
     bne rbuffull02
-    bcs rbuffull02
 rbuffull01
     iny
 rbuffull02
