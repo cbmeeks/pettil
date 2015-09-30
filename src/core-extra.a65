@@ -457,9 +457,51 @@ cmainirq
 
 ;--------------------------------------------------------------
 #if 0
+name=RBUFDATA?
+stack=( addr -- flag )
+tags=events,nosymbol
+Returns [[TRUE]] if the ring buffer has data, [[FALSE]] if empty
+#endif
+rbufdataq
+    jsr rbuffull
+    jmp put
+
+;--------------------------------------------------------------
+#if 0
+name=RBUFFULL
+stack=( addr -- flag )
+tags=events,nosymbol,subroutine
+|^''A''|''0'' head = tail<br|
+|~|''!0'' data in buffer|
+|''Y''|''00''|
+|~|''FF''|
+|''C''|''true''|
+|~|''false''|
+|''Z''|''true''|
+|~|''false''|
+#endif
+rbuffull
+    dec tos+1
+    ldy #$fd            ; wrap counter
+    lda (tos),y
+    lsr
+    iny                 ; head
+    lda (tos),y
+    iny                 ; tail
+    eor (tos),y
+    bne rbuffull02
+    bcs rbuffull02
+rbuffull01
+    iny
+rbuffull02
+    inc tos+1
+    rts
+
+;--------------------------------------------------------------
+#if 0
 name=EVENTIRQ
 stack=( -- )
-tags=events
+tags=events,nosymbol
 IRQ service routine used by event handler.  There are three 
 FIFO queues, two of them accessible to the application 
 programmer: [[EVENTS]] and [[TASKS]].  The third queue is 
@@ -485,10 +527,10 @@ eventirq
 
     ldx present
     beq nextcube
-                    bne nextcube
 doboil
     dec present,x
     bne nextboil
+yeahhere
     jsr tasksaddr
     lda #0                  ; read|head|tasks
     jsr ringo               ; tos points to the next task
@@ -513,18 +555,20 @@ nextboil
     bne doboil
 nextcube
     jsr eventsaddr
-    dec tos+1               ; back up to prev page
-    ldy #$fd
-    lda (tos),y             ; wrap byte
-    lsr
-    bcs testcube            ; odd parity? always test
-    iny                     ; point to head
-    lda (tos),y             ; head
-    iny
-    cmp (tos),y             ; tail
-    beq nomoreice           ; even parity and head=tail? empty
+    jsr rbuffull
+    beq nomoreice
+;    dec tos+1               ; back up to prev page
+;    ldy #$fd
+;    lda (tos),y             ; wrap byte
+;    lsr
+;    bcs testcube            ; odd parity? always test
+;    iny                     ; point to head
+;    lda (tos),y             ; head
+;    iny
+;    cmp (tos),y             ; tail
+;    beq nomoreice           ; even parity and head=tail? empty
 testcube
-    inc tos+1
+;    inc tos+1
     lda #0|bit7|bit6        ; read | tail | events
     jsr ringo               ; tos points to the new event
     ldy #0                  ; ~ do most calls to pringbufplus need Y=0 after?
@@ -544,7 +588,6 @@ meltcube
     dey
     lda (tos),y
     sta present,x
-yeahhere
     jsr eventsaddr
     lda #3|bit7|bit6        ; move | tail | events
     jsr ringo               ; move the tail to consume event

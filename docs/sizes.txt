@@ -1,4 +1,4 @@
--rw-rw-r-- 1 chitselb chitselb  6382 Sep 28 22:01 ./tmp/pettil-core.obj
--rw-rw-r-- 1 chitselb chitselb 15185 Sep 28 22:01 ./tmp/pettil.obj
--rw-rw-r-- 1 chitselb chitselb  3144 Sep 28 22:01 ./tmp/pettil.sym
--rw-rw-r-- 1 chitselb chitselb  5659 Sep 28 22:01 ./tmp/pettil-tdict.obj
+-rw-rw-r-- 1 chitselb chitselb  6394 Sep 29 16:01 ./tmp/pettil-core.obj
+-rw-rw-r-- 1 chitselb chitselb 15186 Sep 29 16:01 ./tmp/pettil.obj
+-rw-rw-r-- 1 chitselb chitselb  3133 Sep 29 16:01 ./tmp/pettil.sym
+-rw-rw-r-- 1 chitselb chitselb  5659 Sep 29 16:01 ./tmp/pettil-tdict.obj
