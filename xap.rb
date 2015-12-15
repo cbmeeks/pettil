@@ -307,7 +307,7 @@ _semi
             text += ((@nextword.nil?) ? "\n\n" : "[[>>|#{@nextword}]]\n\n")
             text += ((@desc.nil?) ? '' : @desc)
             text += ((@code.nil?) ? '' : @code)
-            puts wikititle.to_json
+#puts wikititle.to_json
             return "\{ \"title\": #{wikititle.to_json},"\
                     "\"text\": #{text.to_json},"\
                     "\"tags\": #{@tags.to_json}\},\n"
@@ -375,7 +375,7 @@ _semi
 
 
 
-        bogus = " udslashmodb brktoggle rlencode07 currname01 cold warm01 expect01 _pudot "
+        bogus = " brktoggle expect "
 
 
 
@@ -470,6 +470,7 @@ _semi
                 "core-double.a65 "\
                 "core-io.a65 "\
                 "core-vm.a65 "\
+                "core-tape.a65 "\
                 "core-extra.a65 "\
                 "sweet16.a65 "
 #                "core-test.a65 "\
